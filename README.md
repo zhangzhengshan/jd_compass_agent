@@ -47,19 +47,19 @@
 
 # 7.效果图
 
-点击执行：
+**点击执行：**
 
 <img width="1636" height="1258" alt="屏幕截图 2026-05-15 223104" src="https://github.com/user-attachments/assets/f8b5f44e-a209-499f-8d77-a464a65930b8" />
 
-执行研究路线的展示：
+**执行研究路线的展示：**
 
 <img width="1633" height="1258" alt="屏幕截图 2026-05-15 223125" src="https://github.com/user-attachments/assets/bb703151-0667-4614-8040-b8ba97076f87" />
 
-执行研究路线的输出展示：
+**执行研究路线的输出展示：**
 
 <img width="1605" height="1318" alt="屏幕截图 2026-05-15 223142" src="https://github.com/user-attachments/assets/b8ea6840-5d4d-4750-9b69-15cfa4256fc2" />
 
-执行直接路线的输出展示：
+**执行直接路线的输出展示：**
 
 <img width="1629" height="1329" alt="屏幕截图 2026-05-15 223503" src="https://github.com/user-attachments/assets/f7b211ee-a439-4226-933c-99104171fa9d" />
 
