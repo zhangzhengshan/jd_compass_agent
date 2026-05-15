@@ -1,5 +1,8 @@
-import { useMemo, useState } from 'react'
-import React from 'react'; // 必须加上这一行
+import React, { useMemo, useState } from 'react'
+import InputForm from './components/InputForm.jsx'
+import FlowTimeline from './components/FlowTimeline.jsx'
+import ResultPanel from './components/ResultPanel.jsx'
+
 const API_URL = 'http://127.0.0.1:8000/api/run'
 
 const defaultJD = `Python 后端实习生
@@ -11,20 +14,6 @@ const defaultJD = `Python 后端实习生
 const defaultResume = `我做过 Python Web 项目，写过 FastAPI 接口，能使用 SQL。
 项目中负责接口设计、数据处理与基础调试。`
 
-const STEP_META = [
-  { node: 'parse_node', label: '需求解析' },
-  { node: 'route_node', label: '路由判断' },
-  { node: 'research_node', label: '研究分支' },
-  { node: 'compose_node', label: '输出生成' },
-]
-
-function latestEventForNode(events, node) {
-  for (let i = events.length - 1; i >= 0; i -= 1) {
-    if (events[i]?.node === node) return events[i]
-  }
-  return null
-}
-
 function App() {
   const [jd, setJd] = useState(defaultJD)
   const [resume, setResume] = useState(defaultResume)
@@ -33,43 +22,29 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [events, setEvents] = useState([])
   const [report, setReport] = useState('')
-  const [route, setRoute] = useState('')
+  const [finalData, setFinalData] = useState(null)
   const [error, setError] = useState('')
 
-  const timeline = useMemo(() => {
-    return STEP_META.map((item) => {
-      const last = latestEventForNode(events, item.node)
-      let status = 'pending'
+  const routeLabel = finalData?.route_result?.route_label || ''
 
-      if (last?.type === 'node_start') status = 'running'
-      if (last?.type === 'node_end' || last?.type === 'final') status = 'done'
-      if (loading && !last && item.node === 'parse_node') status = 'queued'
-
-      return {
-        ...item,
-        status,
-      }
-    })
-  }, [events, loading])
-
-  const eventLog = useMemo(() => {
-    return events.filter((e) => e && e.type !== 'final')
-  }, [events])
+  const statusText = useMemo(() => {
+    if (loading) return 'Running'
+    if (report) return 'Ready'
+    return 'Idle'
+  }, [loading, report])
 
   async function handleSubmit(e) {
     e.preventDefault()
     setLoading(true)
     setEvents([])
     setReport('')
-    setRoute('')
+    setFinalData(null)
     setError('')
 
     try {
       const response = await fetch(API_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           jd,
           resume,
@@ -101,7 +76,7 @@ function App() {
 
           if (event.type === 'final') {
             setReport(event.data?.final_report || '')
-            setRoute(event.data?.route || '')
+            setFinalData(event.data || null)
           }
         }
       }
@@ -111,16 +86,13 @@ function App() {
         setEvents((prev) => [...prev, event])
         if (event.type === 'final') {
           setReport(event.data?.final_report || '')
-          setRoute(event.data?.route || '')
+          setFinalData(event.data || null)
         }
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       setError(message)
-      setEvents((prev) => [
-        ...prev,
-        { type: 'error', node: 'client', message, data: {} },
-      ])
+      setEvents((prev) => [...prev, { type: 'error', node: 'client', message, data: {} }])
     } finally {
       setLoading(false)
     }
@@ -131,112 +103,47 @@ function App() {
       <header className="hero">
         <div>
           <p className="eyebrow">JD Compass Agent</p>
-          <h1>简历分析助手展示页面</h1>
-          <p className="subtle">
-            最小闭环：前端输入 → 后端路由 → 结构化报告
-          </p>
+          <h1>轻量级多 Agent 求职分析助手</h1>
+          <p className="subtle">固定主干 + 有限路由 + 流式展示，适合面试演示</p>
         </div>
-        <div className="badge">{loading ? 'Running' : 'Ready'}</div>
+        <div className={`badge ${loading ? 'badge--live' : 'badge--soft'}`}>{statusText}</div>
       </header>
 
-      <main className="grid">
-        <section className="card">
-          <h2>输入区</h2>
-          <form onSubmit={handleSubmit} className="form">
-            <label>
-              岗位 JD
-              <textarea
-                value={jd}
-                onChange={(e) => setJd(e.target.value)}
-                rows={8}
-                placeholder="粘贴岗位 JD"
-              />
-            </label>
+      <main className="layout">
+        <div className="layout__left">
+          <InputForm
+            jd={jd}
+            resume={resume}
+            company={company}
+            extra={extra}
+            loading={loading}
+            error={error}
+            onJdChange={setJd}
+            onResumeChange={setResume}
+            onCompanyChange={setCompany}
+            onExtraChange={setExtra}
+            onSubmit={handleSubmit}
+            onFillExample={() => {
+              setJd(defaultJD)
+              setResume(defaultResume)
+              setCompany('某互联网公司')
+              setExtra('请补充公司背景和岗位画像。')
+            }}
+          />
+        </div>
 
-            <label>
-              简历
-              <textarea
-                value={resume}
-                onChange={(e) => setResume(e.target.value)}
-                rows={8}
-                placeholder="粘贴你的简历内容"
-              />
-            </label>
+        <div className="layout__middle">
+          <FlowTimeline
+            events={events}
+            loading={loading}
+            routeResult={finalData?.route_result}
+            routeLabel={routeLabel}
+          />
+        </div>
 
-            <div className="two-col">
-              <label>
-                公司名
-                <input
-                  value={company}
-                  onChange={(e) => setCompany(e.target.value)}
-                  placeholder="例如：字节跳动"
-                />
-              </label>
-
-              <label>
-                额外要求
-                <input
-                  value={extra}
-                  onChange={(e) => setExtra(e.target.value)}
-                  placeholder="例如：请补充公司背景和岗位画像"
-                />
-              </label>
-            </div>
-
-            <button type="submit" disabled={loading}>
-              {loading ? '执行中…' : '开始分析'}
-            </button>
-
-            {error ? <div className="error-box">错误：{error}</div> : null}
-          </form>
-        </section>
-
-        <section className="card">
-          <h2>流程状态</h2>
-          <div className="timeline">
-            {timeline.map((item) => (
-              <div key={item.node} className={`timeline-item ${item.status}`}>
-                <div className="timeline-title">
-                  <strong>{item.label}</strong>
-                  <span className="timeline-node">{item.node}</span>
-                </div>
-                <span className="timeline-status">
-                  {item.status === 'done'
-                    ? '已完成'
-                    : item.status === 'running'
-                      ? '进行中'
-                      : item.status === 'queued'
-                        ? '等待中'
-                        : '未开始'}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <h2 style={{ marginTop: 24 }}>运行日志</h2>
-          <div className="log">
-            {eventLog.length === 0 ? (
-              <p className="muted">提交一次请求后，这里会实时显示节点事件。</p>
-            ) : (
-              eventLog.map((event, index) => (
-                <div key={`${event.type}-${event.node}-${index}`} className={`log-line ${event.type}`}>
-                  <span className="log-tag">{event.type}</span>
-                  <span>{event.node}</span>
-                  <span>{event.message}</span>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
-
-        <section className="card result">
-          <div className="result-header">
-            <h2>最终报告</h2>
-            <div className="route-pill">路由：{route || '未生成'}</div>
-          </div>
-
-          <pre>{report || '这里会显示最终 Markdown 报告。'}</pre>
-        </section>
+        <div className="layout__right">
+          <ResultPanel report={report} finalData={finalData} />
+        </div>
       </main>
     </div>
   )
